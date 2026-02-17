@@ -1,0 +1,17 @@
+# Claude state
+.claude-state/
+.claude/
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
