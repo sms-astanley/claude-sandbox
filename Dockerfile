@@ -32,6 +32,7 @@ USER sandbox
 # Set HOME to a state directory so all Claude config (~/.claude/ and
 # ~/.claude.json) lands inside a single mountable path
 ENV HOME="/home/sandbox/state"
+ENV PATH="/home/sandbox/state/.local/bin:${PATH}"
 RUN mkdir -p /home/sandbox/state
 
 # Install GSD skills into a staging area baked into the image

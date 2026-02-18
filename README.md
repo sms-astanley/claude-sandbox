@@ -119,6 +119,25 @@ docker run -it --rm \
   claude-sandbox
 ```
 
+### Expose ports for web development
+
+If Claude builds an app that runs a dev server inside the container, use `-p` to map ports to your host:
+
+```bash
+docker run -it --rm \
+  -v "$(pwd)/.claude-state:/home/sandbox/state" \
+  -v "$(pwd):/home/sandbox/workspace" \
+  -p 3000:3000 \
+  claude-sandbox
+```
+
+Then access the app at `http://localhost:3000` on your host machine. Add multiple `-p` flags for additional ports:
+
+```bash
+-p 3000:3000 \
+-p 5173:5173 \
+```
+
 ### Drop into a shell
 
 ```bash
