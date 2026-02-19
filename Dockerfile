@@ -9,12 +9,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python3-venv \
     build-essential \
+    openssl \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Install get-shit-done-cc globally
+# Install pnpm and get-shit-done-cc globally
+RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN npm install -g get-shit-done-cc@latest
 
 # Create a non-root user matching the host UID (default 501 for macOS)

@@ -156,11 +156,14 @@ docker run -it --rm \
 |------------|------------------------------|
 | Node.js 22 | JavaScript runtime           |
 | npm / npx  | Node package manager and runner |
+| pnpm       | Fast, disk-efficient package manager |
 | Python 3   | Python interpreter           |
 | pip        | Python package installer     |
 | uv / uvx   | Fast Python package manager  |
 | git        | Version control              |
 | build-essential | C/C++ compiler toolchain |
+| openssl    | TLS/crypto toolkit (Prisma, Auth.js) |
+| postgresql-client | PostgreSQL CLI (psql) |
 | get-shit-done-cc | Task runner for Claude Code |
 
 ## Documentation
