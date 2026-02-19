@@ -162,6 +162,7 @@ docker run -it --rm \
 | uv / uvx   | Fast Python package manager  |
 | git        | Version control              |
 | build-essential | C/C++ compiler toolchain |
+| jq         | JSON processor for the command line |
 | openssl    | TLS/crypto toolkit (Prisma, Auth.js) |
 | postgresql-client | PostgreSQL CLI (psql) |
 | get-shit-done-cc | Task runner for Claude Code |
