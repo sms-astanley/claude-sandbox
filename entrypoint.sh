@@ -6,11 +6,9 @@ if [ ! -e "$HOME/.local/bin/claude" ]; then
     ln -s /usr/local/bin/claude "$HOME/.local/bin/claude"
 fi
 
-# Seed GSD commands from the image if not already present
-if [ ! -d "$HOME/.claude/commands/gsd" ]; then
-    mkdir -p "$HOME/.claude"
-    cp -r /opt/gsd-seed/* "$HOME/.claude/" 2>/dev/null
-fi
+# Always sync GSD commands from the image to pick up updates
+mkdir -p "$HOME/.claude"
+cp -r /opt/gsd-seed/* "$HOME/.claude/" 2>/dev/null
 
 # Ensure .claude-state is gitignored in the workspace so Claude skips it
 GITIGNORE="/home/sandbox/workspace/.gitignore"
