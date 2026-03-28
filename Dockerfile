@@ -39,10 +39,15 @@ ENV HOME="/home/sandbox/state"
 ENV PATH="/home/sandbox/state/.local/bin:${PATH}"
 RUN mkdir -p /home/sandbox/state
 
-# Install GSD skills into a staging area baked into the image
-RUN npx get-shit-done-cc@latest --claude --global
+# Install GSD skills into a staging area baked into the image.
+# Override HOME for this step so the GSD installer (v1.28.0+) writes absolute
+# paths in @ file references instead of $HOME-relative ones.
+# CLAUDE_CONFIG_DIR ensures GSD still installs to the correct location.
+RUN HOME=/tmp CLAUDE_CONFIG_DIR=/home/sandbox/state/.claude \
+    npx get-shit-done-cc@latest --claude --global
 USER root
-RUN cp -r /home/sandbox/state/.claude /opt/gsd-seed
+RUN cp -r /home/sandbox/state/.claude /opt/gsd-seed \
+    && date +%s > /opt/gsd-seed/.build-stamp
 USER sandbox
 
 COPY --chown=sandbox:sandbox entrypoint.sh /home/sandbox/entrypoint.sh

@@ -6,9 +6,16 @@ if [ ! -e "$HOME/.local/bin/claude" ]; then
     ln -s /usr/local/bin/claude "$HOME/.local/bin/claude"
 fi
 
-# Always sync GSD commands from the image to pick up updates
+# Sync GSD commands from the image seed only when the image has changed.
+# Skipping redundant syncs avoids disrupting concurrent containers that
+# share this state directory.
 mkdir -p "$HOME/.claude"
-cp -r /opt/gsd-seed/* "$HOME/.claude/" 2>/dev/null
+STAMP=$(cat /opt/gsd-seed/.build-stamp 2>/dev/null)
+MARKER="$HOME/.claude/.gsd-stamp"
+if [ ! -f "$MARKER" ] || [ "$(cat "$MARKER")" != "$STAMP" ]; then
+    cp -r /opt/gsd-seed/* "$HOME/.claude/" 2>/dev/null
+    echo "$STAMP" > "$MARKER"
+fi
 
 # Ensure .claude-state is gitignored in the workspace so Claude skips it
 GITIGNORE="/home/sandbox/workspace/.gitignore"

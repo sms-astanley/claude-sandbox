@@ -41,7 +41,7 @@ Files created or modified by Claude appear directly in your local directory for 
 
 > **Important:** `.claude-state/` contains OAuth tokens. The container automatically appends `.claude-state/` to your workspace `.gitignore` to prevent committing secrets.
 
-GSD skills (`/gsd:new-project`, `/gsd:help`, etc.) are pre-installed in the container and automatically seeded into `.claude-state/` on first run.
+GSD skills (`/gsd:new-project`, `/gsd:help`, etc.) are pre-installed in the container and automatically seeded into `.claude-state/` on first run. The build overrides `HOME` during GSD installation so that file references use absolute paths instead of `$HOME`-relative ones (required for GSD v1.28.0+).
 
 ## Authentication
 
