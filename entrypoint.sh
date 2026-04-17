@@ -15,6 +15,10 @@ mkdir -p "$HOME/.claude"
 STAMP=$(cat /opt/gsd-seed/.build-stamp 2>/dev/null)
 MARKER="$HOME/.claude/.gsd-stamp"
 if [ ! -f "$MARKER" ] || [ "$(cat "$MARKER")" != "$STAMP" ]; then
+    # Drop legacy commands/gsd/ from pre-skills GSD installs so /gsd:* doesn't
+    # shadow the new /gsd-* skills. Matches the cleanup the GSD installer
+    # itself performs on --global installs (bin/install.js).
+    rm -rf "$HOME/.claude/commands/gsd"
     cp -r /opt/gsd-seed/* "$HOME/.claude/" 2>/dev/null
     echo "$STAMP" > "$MARKER"
 fi
