@@ -1,10 +1,12 @@
 #!/bin/bash
 
-# Ensure Claude finds the native binary at the expected path
-if [ ! -e "$HOME/.local/bin/claude" ]; then
-    mkdir -p "$HOME/.local/bin"
-    ln -s /usr/local/bin/claude "$HOME/.local/bin/claude"
-fi
+# Force the state volume to point at the image-baked binary so rebuilds
+# actually upgrade Claude. The native installer/updater otherwise writes a
+# versioned binary into ~/.local/share/claude/versions/ and repoints the
+# symlink at it, shadowing /usr/local/bin/claude across container runs.
+mkdir -p "$HOME/.local/bin"
+ln -sfn /usr/local/bin/claude "$HOME/.local/bin/claude"
+rm -rf "$HOME/.local/share/claude"
 
 # Sync GSD commands from the image seed only when the image has changed.
 # Skipping redundant syncs avoids disrupting concurrent containers that
