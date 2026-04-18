@@ -31,6 +31,15 @@ USER sandbox
 RUN curl -fsSL https://claude.ai/install.sh | bash
 USER root
 RUN cp /home/sandbox/.local/bin/claude /usr/local/bin/claude
+
+# Install the GSD SDK (run/auto/init) and wrap it with a shim so that
+# `gsd-sdk query X.Y ...` — which agents call but the published SDK doesn't
+# implement — gets routed to the bundled get-shit-done/bin/gsd-tools.cjs
+# instead (dot → space).
+RUN npm install -g @gsd-build/sdk \
+ && mv /usr/local/bin/gsd-sdk /usr/local/bin/gsd-sdk-real
+COPY gsd-sdk-shim.sh /usr/local/bin/gsd-sdk
+RUN chmod +x /usr/local/bin/gsd-sdk
 USER sandbox
 
 # Set HOME to a state directory so all Claude config (~/.claude/ and
