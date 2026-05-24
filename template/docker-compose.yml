@@ -1,0 +1,46 @@
+# docker-compose.yml — drop into a project and run `docker compose run --rm sandbox`.
+#
+# Per-project state isolation:
+#   Compose auto-prefixes named volumes with the project name (defaults to the
+#   parent directory's basename, or set via COMPOSE_PROJECT_NAME / `-p`). So
+#   the `claude-home` volume declared below materializes as e.g.
+#       <projectdir>_claude-home
+#   in `docker volume ls`. Different project directories → different volumes →
+#   isolated auth, history, plugins, and custom skills per project.
+#
+# State model:
+#   - Workspace (your project) is bind-mounted at /home/sandbox/workspace.
+#   - User-scoped Claude state lives in the `claude-home` volume.
+#   - GSD lives inside the image at /opt/gsd/ and is symlinked into ~/.claude/
+#     on container start. Image rebuilds upgrade GSD automatically; the
+#     named volume never shadows it.
+#
+# Reset state for this project:
+#   docker compose down -v
+#
+# Upgrade the image:
+#   (in the claude_sandbox repo)  docker compose build
+#   (in this project)             docker compose run --rm sandbox
+
+services:
+  sandbox:
+    image: claude-sandbox:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/home/sandbox/workspace
+      - claude-home:/home/sandbox/.claude
+    # To mount additional volumes like read-only data, append to the volumes list, e.g.:
+    #  - ~/datasets:/home/sandbox/data:ro
+    #   
+    # Uncomment to use an API key instead of /login:
+    # environment:
+    #   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    #   
+    # Uncomment to expose dev-server ports to the host:
+    # ports:
+    #   - "3000:3000"
+    #   - "5173:5173"
+
+volumes:
+  claude-home:

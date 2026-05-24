@@ -32,35 +32,22 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 USER root
 RUN cp /home/sandbox/.local/bin/claude /usr/local/bin/claude
 
-# Install the GSD SDK (run/auto/init) and wrap it with a shim so that
-# `gsd-sdk query X.Y ...` — which agents call but the published SDK doesn't
-# implement — gets routed to the bundled get-shit-done/bin/gsd-tools.cjs
-# instead (dot → space).
-RUN npm install -g @gsd-build/sdk \
- && mv /usr/local/bin/gsd-sdk /usr/local/bin/gsd-sdk-real
-COPY gsd-sdk-shim.sh /usr/local/bin/gsd-sdk
-RUN chmod +x /usr/local/bin/gsd-sdk
+# Install GSD globally so `gsd-sdk` is on PATH (GSD agents invoke
+# `gsd-sdk query ...`). npx alone leaves the shim in an npx-cache dir
+# that won't survive into the running container.
+RUN npm install -g @opengsd/get-shit-done-redux@latest
+
+# Lay down GSD content into an image-only path. The entrypoint symlinks
+# each gsd-* entry into ~/.claude/{skills,commands,...} at runtime, so
+# image rebuilds always deliver the latest GSD without the mounted volume
+# shadowing it.
+RUN mkdir -p /opt/gsd && chown sandbox:sandbox /opt/gsd
 USER sandbox
-
-# Set HOME to a state directory so all Claude config (~/.claude/ and
-# ~/.claude.json) lands inside a single mountable path
-ENV HOME="/home/sandbox/state"
-ENV PATH="/home/sandbox/state/.local/bin:${PATH}"
-RUN mkdir -p /home/sandbox/state
-
-# Install GSD skills into a staging area baked into the image.
-# Override HOME for this step so the GSD installer (v1.28.0+) writes absolute
-# paths in @ file references instead of $HOME-relative ones.
-# CLAUDE_CONFIG_DIR ensures GSD still installs to the correct location.
-RUN HOME=/tmp CLAUDE_CONFIG_DIR=/home/sandbox/state/.claude \
-    npx get-shit-done-cc@latest --claude --global
-USER root
-RUN cp -r /home/sandbox/state/.claude /opt/gsd-seed \
-    && date +%s > /opt/gsd-seed/.build-stamp
-USER sandbox
-
-COPY --chown=sandbox:sandbox entrypoint.sh /home/sandbox/entrypoint.sh
+RUN CLAUDE_CONFIG_DIR=/opt/gsd \
+    get-shit-done-redux --claude --global --yes
 
 WORKDIR /home/sandbox/workspace
+
+COPY --chown=sandbox:sandbox entrypoint.sh /home/sandbox/entrypoint.sh
 
 ENTRYPOINT ["/home/sandbox/entrypoint.sh"]

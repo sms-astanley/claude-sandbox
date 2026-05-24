@@ -1,156 +1,139 @@
 # Claude Sandbox
 
-A Docker container for running Claude Code with common development tools (Python, uv, Node.js, npm, npx).
+A Docker container for running Claude Code with common development tools (Python, uv, Node.js, pnpm) and [GSD](https://github.com/open-gsd/get-shit-done-redux) preinstalled.
+
+## How it works
+
+The image is immutable: Claude Code and GSD are baked in at build time. State that needs to survive across runs (auth, conversation history, plugins, custom skills) lives outside the image — either in a named docker volume (recommended, via the compose template) or in a host bind mount (via `docker run`).
+
+This repo contains two compose files for two distinct purposes:
+
+| File | Purpose |
+|---|---|
+| `docker-compose.yml` (repo root) | Builds the `claude-sandbox` image. Run from this repo. |
+| `template/docker-compose.yml` | Project template. Copy into a project to launch the sandbox. |
+
+GSD itself lives at `/opt/gsd/` inside the image and is symlinked into `~/.claude/{skills,commands,agents,hooks}/gsd-*` on container start. Rebuilding the image with a newer GSD updates `/opt/gsd/`; the symlinks resolve to the new version automatically, so the state volume never shadows or fights image upgrades.
 
 ## Prerequisites
 
-- Docker installed and running
-- One of the following for authentication:
-  - An Anthropic API key (`ANTHROPIC_API_KEY`), **or**
+- Docker + Docker Compose v2
+- One of:
+  - An Anthropic API key (`ANTHROPIC_API_KEY`), or
   - A Claude account for OAuth login via `/login`
 
-## Build
+## Build the image
+
+From this repo:
 
 ```bash
-docker build -t claude-sandbox .
+docker compose build
 ```
 
-The container user defaults to UID 501 (macOS default). On Linux, pass your UID so mounted file permissions match:
+On Linux, override `USER_UID` so mounted file permissions match:
 
 ```bash
-docker build --build-arg USER_UID=$(id -u) -t claude-sandbox .
+USER_UID=$(id -u) docker compose build
 ```
 
-## Quick Start
+## Quick start (recommended): docker compose
 
-From your project directory:
+Copy `template/docker-compose.yml` from this repo into the root of your project (renaming it to `docker-compose.yml` there), then from your project:
 
 ```bash
-mkdir -p .claude-state
-docker run -it --rm \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  -v "$(pwd):/home/sandbox/workspace" \
-  claude-sandbox
+docker compose run --rm sandbox
 ```
 
-This mounts two things:
-- **`.claude-state/`** — persists Claude credentials, settings, and history across runs
-- **Current directory** — your project files, editable on the host and visible inside the container
+That's it. Compose auto-prefixes the `claude-home` volume with the project name (defaulted from the directory basename), so it materializes as e.g. `myproject_claude-home`. Each project directory gets its own isolated volume — auth, history, plugins, and custom skills don't leak between projects.
 
-Files created or modified by Claude appear directly in your local directory for use with your editor, git, and other host tools.
-
-> **Important:** `.claude-state/` contains OAuth tokens. The container automatically appends `.claude-state/` to your workspace `.gitignore` to prevent committing secrets.
-
-GSD skills (`/gsd:new-project`, `/gsd:help`, etc.) are pre-installed in the container and automatically seeded into `.claude-state/` on first run. The build overrides `HOME` during GSD installation so that file references use absolute paths instead of `$HOME`-relative ones (required for GSD v1.28.0+).
-
-## Authentication
-
-### Option A: API key
+### First login
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-docker run -it --rm \
-  -e ANTHROPIC_API_KEY \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  -v "$(pwd):/home/sandbox/workspace" \
-  claude-sandbox
+docker compose run --rm sandbox /login
 ```
 
-### Option B: OAuth login (`/login`)
-
-The `/login` flow displays a URL that you open in your host browser — no browser is needed inside the container.
-
-**First-time login:**
-
-```bash
-mkdir -p .claude-state
-docker run -it --rm \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  claude-sandbox /login
-```
-
-Copy the URL, open it in your host browser, and complete the login. Credentials are saved to `.claude-state/` in your current directory and reused on subsequent runs.
-
-## Run
-
-### Standard usage
-
-```bash
-docker run -it --rm \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  -v "$(pwd):/home/sandbox/workspace" \
-  claude-sandbox
-```
-
-### With `--dangerously-skip-permissions`
-
-```bash
-docker run -it --rm \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  -v "$(pwd):/home/sandbox/workspace" \
-  claude-sandbox --dangerously-skip-permissions
-```
+Open the printed URL in your host browser, complete login, and credentials are saved to the named volume for future runs.
 
 ### One-shot prompt
 
 ```bash
-docker run -it --rm \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  -v "$(pwd):/home/sandbox/workspace" \
-  claude-sandbox -p "Write a Python script that prints fibonacci numbers"
-```
-
-### Mount a different project directory
-
-```bash
-docker run -it --rm \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  -v /path/to/your/repo:/home/sandbox/workspace \
-  claude-sandbox
-```
-
-### Mount additional directories
-
-```bash
-docker run -it --rm \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  -v "$(pwd):/home/sandbox/workspace" \
-  -v ~/datasets:/home/sandbox/data:ro \
-  claude-sandbox
-```
-
-### Expose ports for web development
-
-If Claude builds an app that runs a dev server inside the container, use `-p` to map ports to your host:
-
-```bash
-docker run -it --rm \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
-  -v "$(pwd):/home/sandbox/workspace" \
-  -p 3000:3000 \
-  claude-sandbox
-```
-
-Then access the app at `http://localhost:3000` on your host machine. Add multiple `-p` flags for additional ports:
-
-```bash
--p 3000:3000 \
--p 5173:5173 \
+docker compose run --rm sandbox -p "Write a Python script that prints fibonacci numbers"
 ```
 
 ### Drop into a shell
 
 ```bash
+docker compose run --rm sandbox bash
+```
+
+(Don't use `--entrypoint bash` — that bypasses the GSD symlink setup. The entrypoint detects `bash`/`sh` as the first argument and execs a shell after running setup.)
+
+### Reset state for the project
+
+```bash
+docker compose down -v
+```
+
+### Customize
+
+Edit the project's `docker-compose.yml` to expose ports, add environment variables, or mount extra directories — see the commented blocks in the template.
+
+## Alternate: docker run
+
+For ad-hoc use without a `docker-compose.yml`:
+
+```bash
 docker run -it --rm \
-  --entrypoint bash \
-  -v "$(pwd)/.claude-state:/home/sandbox/state" \
   -v "$(pwd):/home/sandbox/workspace" \
+  -v claude-sandbox-home:/home/sandbox/.claude \
   claude-sandbox
 ```
 
-> **Note on file permissions:** The container runs as a non-root user (`sandbox`). The default UID is 501 (macOS). If you encounter permission errors on mounted files on Linux, rebuild with `--build-arg USER_UID=$(id -u)` to match your host user.
+Or with a host bind-mount instead of a named volume:
 
-## Included Tools
+```bash
+docker run -it --rm \
+  -v "$(pwd):/home/sandbox/workspace" \
+  -v "$(pwd)/.claude-sandbox:/home/sandbox/.claude" \
+  claude-sandbox
+```
+
+With an API key:
+
+```bash
+docker run -it --rm \
+  -e ANTHROPIC_API_KEY \
+  -v "$(pwd):/home/sandbox/workspace" \
+  -v claude-sandbox-home:/home/sandbox/.claude \
+  claude-sandbox
+```
+
+With `--dangerously-skip-permissions` (how GSD is intended to run):
+
+```bash
+docker run -it --rm \
+  -v "$(pwd):/home/sandbox/workspace" \
+  -v claude-sandbox-home:/home/sandbox/.claude \
+  claude-sandbox --dangerously-skip-permissions
+```
+
+Expose ports:
+
+```bash
+docker run -it --rm \
+  -p 3000:3000 -p 5173:5173 \
+  -v "$(pwd):/home/sandbox/workspace" \
+  -v claude-sandbox-home:/home/sandbox/.claude \
+  claude-sandbox
+```
+
+## Notes
+
+- **File permissions:** the container runs as a non-root user. Default UID is 501 (macOS). On Linux, rebuild with `USER_UID=$(id -u) docker compose build`.
+- **GSD upgrades:** rebuild the image (`docker compose build` from this repo). The next `docker compose run` in any project picks up the new GSD without any state-volume churn — the symlinks just point to the new version.
+- **User-installed skills/plugins** (anything under `~/.claude/` that isn't a `gsd-*` symlink) persists in the `claude-home` volume and is untouched by image upgrades.
+
+## Included tools
 
 | Tool       | Description                  |
 |------------|------------------------------|
@@ -162,12 +145,13 @@ docker run -it --rm \
 | uv / uvx   | Fast Python package manager  |
 | git        | Version control              |
 | build-essential | C/C++ compiler toolchain |
-| jq         | JSON processor for the command line |
-| openssl    | TLS/crypto toolkit (Prisma, Auth.js) |
-| postgresql-client | PostgreSQL CLI (psql) |
-| get-shit-done-cc | Task runner for Claude Code |
+| jq         | JSON processor               |
+| openssl    | TLS/crypto toolkit           |
+| postgresql-client | psql CLI              |
+| @opengsd/get-shit-done-redux | Spec-driven workflow for Claude Code |
 
 ## Documentation
 
-- [Claude Code Documentation](https://code.claude.com/docs/en/overview) — official docs for Claude Code CLI usage, configuration, and features
-- [Get Shit Done User Guide](https://github.com/gsd-build/get-shit-done/blob/main/docs/USER-GUIDE.md) — usage guide for the get-shit-done-cc task runner
+- [Claude Code docs](https://code.claude.com/docs/en/overview)
+- [GSD (redux) repo](https://github.com/open-gsd/get-shit-done-redux)
+- [GSD user guide](https://github.com/open-gsd/get-shit-done-redux/blob/main/docs/USER-GUIDE.md)

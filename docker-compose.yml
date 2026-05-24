@@ -1,0 +1,20 @@
+# docker-compose.yml — build the claude-sandbox image from this repo.
+#
+# This file is for building/maintaining the image, NOT for using it in a
+# project. To use the sandbox in a project, copy `template/docker-compose.yml`
+# into that project's root.
+#
+# Usage:
+#   docker compose build              # build the image
+#   docker compose build --no-cache   # force a clean rebuild
+#
+# On Linux, override USER_UID to match your host user:
+#   USER_UID=$(id -u) docker compose build
+
+services:
+  sandbox:
+    image: claude-sandbox:latest
+    build:
+      context: .
+      args:
+        USER_UID: ${USER_UID:-501}
