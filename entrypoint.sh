@@ -55,6 +55,6 @@ case "${1:-}" in
         exec "$@"
         ;;
     *)
-        exec claude "$@"
+        exec claude --dangerously-skip-permissions "$@"
         ;;
 esac

@@ -15,6 +15,8 @@ This repo contains two compose files for two distinct purposes:
 
 GSD itself lives at `/opt/gsd/` inside the image and is symlinked into `~/.claude/{skills,commands,agents,hooks}/gsd-*` on container start. Rebuilding the image with a newer GSD updates `/opt/gsd/`; the symlinks resolve to the new version automatically, so the state volume never shadows or fights image upgrades.
 
+The entrypoint launches `claude` with `--dangerously-skip-permissions` by default — GSD's hook-driven workflow assumes this. The flag only applies inside this sandboxed container; if you need interactive permission prompts, override the entrypoint or run `claude` directly inside `sandbox bash`.
+
 ## Prerequisites
 
 - Docker + Docker Compose v2
@@ -106,15 +108,6 @@ docker run -it --rm \
   -v "$(pwd):/home/sandbox/workspace" \
   -v claude-sandbox-home:/home/sandbox/.claude \
   claude-sandbox
-```
-
-With `--dangerously-skip-permissions` (how GSD is intended to run):
-
-```bash
-docker run -it --rm \
-  -v "$(pwd):/home/sandbox/workspace" \
-  -v claude-sandbox-home:/home/sandbox/.claude \
-  claude-sandbox --dangerously-skip-permissions
 ```
 
 Expose ports:
