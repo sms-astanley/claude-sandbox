@@ -39,6 +39,22 @@ for f in "$GSD_ROOT"/gsd-*.json "$GSD_ROOT/package.json"; do
     ln -sfn "$f" "$CLAUDE_DIR/$(basename "$f")"
 done
 
+# ~/.claude.json holds onboarding flags, accepted-agreements state, and OAuth
+# account metadata. It lives at $HOME (sibling of ~/.claude/), so it's outside
+# the mounted volume and would reset every --rm. Persist it by moving the real
+# file into the volume and symlinking ~/.claude.json to it. Paranoid filename
+# avoids any chance Claude Code ever scans ~/.claude/ for a literal .claude.json.
+HOME_CONFIG="$HOME/.claude.json"
+PERSISTED_CONFIG="$CLAUDE_DIR/.claude-json-persisted"
+if [ ! -e "$PERSISTED_CONFIG" ]; then
+    if [ -f "$HOME_CONFIG" ] && [ ! -L "$HOME_CONFIG" ]; then
+        cp "$HOME_CONFIG" "$PERSISTED_CONFIG"
+    else
+        echo '{}' > "$PERSISTED_CONFIG"
+    fi
+fi
+ln -sfn "$PERSISTED_CONFIG" "$HOME_CONFIG"
+
 # settings.json contains GSD's hook wiring (SessionStart, PreToolUse,
 # PostToolUse, statusLine) — without it, none of the GSD hooks fire.
 # Symlink it only if the user hasn't created their own real settings.json.

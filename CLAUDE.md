@@ -15,7 +15,7 @@ The image is immutable. State lives outside it. Three rules govern everything:
 | File | Role |
 |---|---|
 | `Dockerfile` | Builds the image. Installs OS deps + uv + pnpm + Claude Code + GSD globally (npm) + GSD content to `/opt/gsd` via `CLAUDE_CONFIG_DIR`. |
-| `entrypoint.sh` | On every start: creates per-entry symlinks for `~/.claude/{skills,commands,agents,hooks}/gsd-*`, plus `settings.json`, `get-shit-done/`, and GSD root metadata. Dispatches first arg: `bash`/`sh` → shell, anything else → `claude "$@"`. |
+| `entrypoint.sh` | On every start: creates per-entry symlinks for `~/.claude/{skills,commands,agents,hooks}/gsd-*`, plus `settings.json`, `get-shit-done/`, and GSD root metadata. Also persists `~/.claude.json` by symlinking it to `~/.claude/.claude-json-persisted` inside the volume. Dispatches first arg: `bash`/`sh` → shell, anything else → `claude "$@"`. |
 | `docker-compose.yml` | Repo-root compose file for **building only** (`docker compose build`). Has a `build:` block, no run-time mounts. |
 | `template/docker-compose.yml` | Template **for users to copy into their projects**. Has the workspace bind mount + named `claude-home` volume. References `image: claude-sandbox:latest` (no `build:` block). |
 | `README.md` | User-facing docs. Distinguishes the two compose files clearly. |
@@ -38,6 +38,7 @@ The named volume `claude-home` is auto-prefixed by compose with the project name
 ## Gotchas to remember
 
 - **Never tell users to run `--entrypoint bash`.** That bypasses `entrypoint.sh` and GSD's symlinks won't exist. The dispatch in `entrypoint.sh` is why `sandbox bash` works correctly.
+- **`~/.claude.json` must be symlinked into the volume.** It lives at `$HOME` (sibling of `~/.claude/`), so it's outside the mounted volume by default. Without the symlink, onboarding flags, accepted-agreements state, and OAuth account metadata reset on every `--rm` even though `.credentials.json` (inside the volume) persists. The real file lives at `~/.claude/.claude-json-persisted` (paranoid name to avoid any chance of Claude Code scanning for a literal `.claude.json` inside `~/.claude/`).
 - **`settings.json` must be symlinked from `/opt/gsd/`** — it carries GSD's hook wiring (SessionStart, PreToolUse, PostToolUse, statusLine). Without it the skills/agents are useless because no hooks fire. The entrypoint only links it if no real user file is present (symlinks count as "not real"); user overrides should go in `settings.local.json`.
 - **The Dockerfile does `npm install -g` AND a separate installer run.** The global install gives the `gsd-sdk` binary on PATH; the installer run with `CLAUDE_CONFIG_DIR=/opt/gsd get-shit-done-redux --claude --global --yes` lays down skills/agents/hooks/settings.json into `/opt/gsd/`. Removing either step breaks GSD.
 - **GSD redux replaced both `@gsd-build/sdk` and `get-shit-done-cc`.** The old `gsd-sdk-shim.sh` is obsolete — the new package's `bin/gsd-sdk.js` already implements the `query` subcommand.
