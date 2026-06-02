@@ -37,7 +37,11 @@ services:
     # environment:
     #   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     #   
-    # Uncomment to expose dev-server ports to the host:
+    # Uncomment to expose dev-server ports to the host.
+    # IMPORTANT: `docker compose run` ignores `ports:` by default (to avoid
+    # collisions with an existing `up` instance). To actually publish them:
+    #   docker compose run --service-ports --rm sandbox
+    # or use `docker compose up` instead of `run`.
     # ports:
     #   - "3000:3000"
     #   - "5173:5173"

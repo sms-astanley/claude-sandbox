@@ -80,6 +80,14 @@ docker compose down -v
 
 Edit the project's `docker-compose.yml` to expose ports, add environment variables, or mount extra directories — see the commented blocks in the template.
 
+> **Exposing ports with `docker compose run`:** `run` ignores the `ports:` section by default (a deliberate Docker behavior to prevent collisions with an already-running `up` instance). To publish ports, either add `--service-ports`:
+>
+> ```bash
+> docker compose run --service-ports --rm sandbox
+> ```
+>
+> or use `docker compose up` instead. `ports:` is honored by `up` without any extra flag.
+
 ## Alternate: docker run
 
 For ad-hoc use without a `docker-compose.yml`:
