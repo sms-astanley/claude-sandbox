@@ -1,6 +1,6 @@
 # claude-sandbox
 
-Docker container packaging Claude Code + [GSD (open-gsd/get-shit-done-redux)](https://github.com/open-gsd/get-shit-done-redux) with a dev toolchain.
+Docker container packaging Claude Code + [GSD Core (open-gsd/gsd-core)](https://github.com/open-gsd/gsd-core) with a dev toolchain.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ The image is immutable. State lives outside it. Three rules govern everything:
 
 1. **GSD lives at `/opt/gsd/` inside the image — never in the mounted volume.** The entrypoint symlinks each entry from `/opt/gsd/` into `~/.claude/` on every container start. Image rebuilds update `/opt/gsd/`; symlinks resolve to the new content automatically. The mounted volume cannot shadow GSD.
 2. **Only `~/.claude/` is mounted from the host.** HOME stays at the image default (`/home/sandbox`); `.local/bin/`, PATH, the `claude` binary, and GSD all stay in the image. No `$HOME` redirection, no sync-from-seed, no stamp files — those were the old `.claude-state/` design's workarounds for shadowing.
-3. **`gsd-sdk` must be on PATH globally.** GSD agents invoke `gsd-sdk query <handler>` directly. Installing via `npx` leaves the shim in an ephemeral cache and breaks workflows; the Dockerfile uses `npm install -g @opengsd/get-shit-done-redux` to get `/usr/local/bin/gsd-sdk`.
+3. **`gsd-tools` must be on PATH globally.** GSD agents/hooks invoke `gsd-tools <subcommand>` directly. Installing via `npx` leaves the shim in an ephemeral cache and breaks workflows; the Dockerfile uses `npm install -g @opengsd/gsd-core` to get `/usr/local/bin/gsd-tools` (and the `gsd-core` installer binary).
 
 ## Files
 
@@ -40,7 +40,7 @@ The named volume `claude-home` is auto-prefixed by compose with the project name
 - **Never tell users to run `--entrypoint bash`.** That bypasses `entrypoint.sh` and GSD's symlinks won't exist. The dispatch in `entrypoint.sh` is why `sandbox bash` works correctly.
 - **`~/.claude.json` must be symlinked into the volume.** It lives at `$HOME` (sibling of `~/.claude/`), so it's outside the mounted volume by default. Without the symlink, onboarding flags, accepted-agreements state, and OAuth account metadata reset on every `--rm` even though `.credentials.json` (inside the volume) persists. The real file lives at `~/.claude/.claude-json-persisted` (paranoid name to avoid any chance of Claude Code scanning for a literal `.claude.json` inside `~/.claude/`).
 - **`settings.json` must be symlinked from `/opt/gsd/`** — it carries GSD's hook wiring (SessionStart, PreToolUse, PostToolUse, statusLine). Without it the skills/agents are useless because no hooks fire. The entrypoint only links it if no real user file is present (symlinks count as "not real"); user overrides should go in `settings.local.json`.
-- **The Dockerfile does `npm install -g` AND a separate installer run.** The global install gives the `gsd-sdk` binary on PATH; the installer run with `CLAUDE_CONFIG_DIR=/opt/gsd get-shit-done-redux --claude --global --yes` lays down skills/agents/hooks/settings.json into `/opt/gsd/`. Removing either step breaks GSD.
-- **GSD redux replaced both `@gsd-build/sdk` and `get-shit-done-cc`.** The old `gsd-sdk-shim.sh` is obsolete — the new package's `bin/gsd-sdk.js` already implements the `query` subcommand.
-- **GSD redux has no commands/ entries — everything is skills.** `/opt/gsd/commands/` exists but is empty. The entrypoint's loop over `skills commands agents hooks` is robust to this (empty glob is skipped via `[ -e "$src" ] || continue`).
+- **The Dockerfile does `npm install -g` AND a separate installer run.** The global install gives the `gsd-tools` and `gsd-core` binaries on PATH; the installer run with `CLAUDE_CONFIG_DIR=/opt/gsd gsd-core --claude --global` lays down skills/agents/hooks/settings.json into `/opt/gsd/`. Passing an explicit runtime flag (`--claude`) plus location (`--global`) makes the installer non-interactive — no `--yes` flag exists in `gsd-core`. Removing either step breaks GSD.
+- **Package rename history.** `@opengsd/get-shit-done-redux` → `@opengsd/gsd-core` (repo `open-gsd/get-shit-done-redux` → `open-gsd/gsd-core`). Binaries `get-shit-done-redux` → `gsd-core` (installer) and `gsd-sdk` → `gsd-tools` (CLI used by agents/hooks). Both repo and old npm tarball still resolve via redirect, but pin to the new names.
+- **GSD has no commands/ entries — everything is skills.** `/opt/gsd/commands/` exists but is empty. The entrypoint's loop over `skills commands agents hooks` is robust to this (empty glob is skipped via `[ -e "$src" ] || continue`).
 - **On Linux, build with `USER_UID=$(id -u) docker compose build`** so mounted file permissions match the host user. macOS defaults to 501 which is the build-arg default.

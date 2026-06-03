@@ -1,6 +1,6 @@
 # Claude Sandbox
 
-A Docker container for running Claude Code with common development tools (Python, uv, Node.js, pnpm) and [GSD](https://github.com/open-gsd/get-shit-done-redux) preinstalled.
+A Docker container for running Claude Code with common development tools (Python, uv, Node.js, pnpm) and [GSD](https://github.com/open-gsd/gsd-core) preinstalled.
 
 ## How it works
 
@@ -149,10 +149,10 @@ docker run -it --rm \
 | jq         | JSON processor               |
 | openssl    | TLS/crypto toolkit           |
 | postgresql-client | psql CLI              |
-| @opengsd/get-shit-done-redux | Spec-driven workflow for Claude Code |
+| @opengsd/gsd-core | Spec-driven workflow for Claude Code |
 
 ## Documentation
 
 - [Claude Code docs](https://code.claude.com/docs/en/overview)
-- [GSD (redux) repo](https://github.com/open-gsd/get-shit-done-redux)
-- [GSD user guide](https://github.com/open-gsd/get-shit-done-redux/blob/main/docs/USER-GUIDE.md)
+- [GSD Core repo](https://github.com/open-gsd/gsd-core)
+- [GSD Core docs](https://github.com/open-gsd/gsd-core/blob/main/docs/README.md)

@@ -32,10 +32,10 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 USER root
 RUN cp /home/sandbox/.local/bin/claude /usr/local/bin/claude
 
-# Install GSD globally so `gsd-sdk` is on PATH (GSD agents invoke
-# `gsd-sdk query ...`). npx alone leaves the shim in an npx-cache dir
-# that won't survive into the running container.
-RUN npm install -g @opengsd/get-shit-done-redux@latest
+# Install GSD globally so `gsd-tools` is on PATH (GSD agents/hooks invoke
+# `gsd-tools ...`). npx alone leaves the shim in an npx-cache dir that
+# won't survive into the running container.
+RUN npm install -g @opengsd/gsd-core@latest
 
 # Lay down GSD content into an image-only path. The entrypoint symlinks
 # each gsd-* entry into ~/.claude/{skills,commands,...} at runtime, so
@@ -44,7 +44,7 @@ RUN npm install -g @opengsd/get-shit-done-redux@latest
 RUN mkdir -p /opt/gsd && chown sandbox:sandbox /opt/gsd
 USER sandbox
 RUN CLAUDE_CONFIG_DIR=/opt/gsd \
-    get-shit-done-redux --claude --global --yes
+    gsd-core --claude --global
 
 WORKDIR /home/sandbox/workspace
 
