@@ -26,12 +26,18 @@ ARG USER_UID=501
 RUN useradd -m -s /bin/bash -u ${USER_UID} sandbox
 USER sandbox
 
-# Install Claude Code via native installer, then copy to a global path
-# so the binary works regardless of HOME
+# Install Claude Code via the native installer (the supported install
+# method; it supports in-place self-updates). It lands at
+# ~/.local/bin/claude as a launcher into versioned binaries under
+# ~/.local/share/claude/. HOME is fixed at /home/sandbox in this image, so
+# this single native install is canonical — we put ~/.local/bin on PATH
+# instead of copying the launcher to /usr/local/bin. (That copy used to
+# leave two `claude` binaries in the image; current Claude Code flags the
+# copy as a leftover "npm-global" install via the multi-install warning.)
+ENV PATH="/home/sandbox/.local/bin:${PATH}"
 RUN curl -fsSL https://claude.ai/install.sh | bash
-USER root
-RUN cp /home/sandbox/.local/bin/claude /usr/local/bin/claude
 
+USER root
 # Install GSD globally so `gsd-tools` is on PATH (GSD agents/hooks invoke
 # `gsd-tools ...`). npx alone leaves the shim in an npx-cache dir that
 # won't survive into the running container.
