@@ -43,15 +43,15 @@ USER_UID=$(id -u) docker compose build
 Copy `template/docker-compose.yml` from this repo into the root of your project (renaming it to `docker-compose.yml` there), then from your project:
 
 ```bash
-docker compose run --rm sandbox
+docker compose run --service-ports --rm sandbox
 ```
 
-That's it. Compose auto-prefixes the `claude-home` volume with the project name (defaulted from the directory basename), so it materializes as e.g. `myproject_claude-home`. Each project directory gets its own isolated volume — auth, history, plugins, and custom skills don't leak between projects.
+That's it. (`--service-ports` does nothing until you uncomment `ports:` in the template, but plain `run` silently ignores `ports:` — build the habit now so exposed ports work the day you need them.) Compose auto-prefixes the `claude-home` volume with the project name (defaulted from the directory basename), so it materializes as e.g. `myproject_claude-home`. Each project directory gets its own isolated volume — auth, history, plugins, and custom skills don't leak between projects.
 
 ### First login
 
 ```bash
-docker compose run --rm sandbox /login
+docker compose run --service-ports --rm sandbox /login
 ```
 
 Open the printed URL in your host browser, complete login, and credentials are saved to the named volume for future runs.
@@ -59,13 +59,23 @@ Open the printed URL in your host browser, complete login, and credentials are s
 ### One-shot prompt
 
 ```bash
-docker compose run --rm sandbox -p "Write a Python script that prints fibonacci numbers"
+docker compose run --service-ports --rm sandbox -p "Write a Python script that prints fibonacci numbers"
 ```
+
+### Resume a previous session
+
+```bash
+docker compose run --service-ports --rm sandbox --continue        # most recent session
+docker compose run --service-ports --rm sandbox --resume         # interactive picker
+docker compose run --service-ports --rm sandbox --resume <id>    # specific session
+```
+
+The entrypoint forwards these flags to `claude`. Resuming works across `--rm` restarts because session transcripts live under `~/.claude/projects/` inside the `claude-home` volume, and the project is always mounted at the same path (`/home/sandbox/workspace`), which is how Claude Code keys sessions to a project. Note that `docker compose down -v` deletes session history along with the rest of the project's state.
 
 ### Drop into a shell
 
 ```bash
-docker compose run --rm sandbox bash
+docker compose run --service-ports --rm sandbox bash
 ```
 
 (Don't use `--entrypoint bash` — that bypasses the GSD symlink setup. The entrypoint detects `bash`/`sh` as the first argument and execs a shell after running setup.)
@@ -80,13 +90,7 @@ docker compose down -v
 
 Edit the project's `docker-compose.yml` to expose ports, add environment variables, or mount extra directories — see the commented blocks in the template.
 
-> **Exposing ports with `docker compose run`:** `run` ignores the `ports:` section by default (a deliberate Docker behavior to prevent collisions with an already-running `up` instance). To publish ports, either add `--service-ports`:
->
-> ```bash
-> docker compose run --service-ports --rm sandbox
-> ```
->
-> or use `docker compose up` instead. `ports:` is honored by `up` without any extra flag.
+> **Why `--service-ports`?** `docker compose run` ignores the `ports:` section by default (a deliberate Docker behavior to prevent collisions with an already-running `up` instance). The flag makes `run` publish them, and is harmless when no ports are declared — which is why every command above includes it. Alternatively, `docker compose up` honors `ports:` without any extra flag.
 
 ## Alternate: docker run
 

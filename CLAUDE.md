@@ -27,9 +27,9 @@ The image is immutable. State lives outside it. Three rules govern everything:
 docker compose build
 
 # Use the sandbox (from any project that has copied template/docker-compose.yml in)
-docker compose run --rm sandbox            # interactive claude
-docker compose run --rm sandbox bash       # shell (entrypoint still runs symlink setup)
-docker compose run --rm sandbox -p "..."   # one-shot prompt
+docker compose run --service-ports --rm sandbox            # interactive claude
+docker compose run --service-ports --rm sandbox bash       # shell (entrypoint still runs symlink setup)
+docker compose run --service-ports --rm sandbox -p "..."   # one-shot prompt
 docker compose down -v                     # reset the project's state volume
 ```
 
@@ -37,6 +37,7 @@ The named volume `claude-home` is auto-prefixed by compose with the project name
 
 ## Gotchas to remember
 
+- **All documented `docker compose run` commands must include `--service-ports`.** Plain `run` silently ignores `ports:` (deliberate Docker behavior to avoid colliding with an `up` instance), so users who uncomment the template's ports block get no port mapping. The flag is a no-op when no ports are declared, so it's always safe to include.
 - **Never tell users to run `--entrypoint bash`.** That bypasses `entrypoint.sh` and GSD's symlinks won't exist. The dispatch in `entrypoint.sh` is why `sandbox bash` works correctly.
 - **`~/.claude.json` must be symlinked into the volume.** It lives at `$HOME` (sibling of `~/.claude/`), so it's outside the mounted volume by default. Without the symlink, onboarding flags, accepted-agreements state, and OAuth account metadata reset on every `--rm` even though `.credentials.json` (inside the volume) persists. The real file lives at `~/.claude/.claude-json-persisted` (paranoid name to avoid any chance of Claude Code scanning for a literal `.claude.json` inside `~/.claude/`).
 - **`settings.json` must be symlinked from `/opt/gsd/`** — it carries GSD's hook wiring (SessionStart, PreToolUse, PostToolUse, statusLine). Without it the skills/agents are useless because no hooks fire. The entrypoint only links it if no real user file is present (symlinks count as "not real"); user overrides should go in `settings.local.json`.

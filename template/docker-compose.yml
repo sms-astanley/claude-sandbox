@@ -1,4 +1,8 @@
-# docker-compose.yml — drop into a project and run `docker compose run --rm sandbox`.
+# docker-compose.yml — drop into a project and run:
+#   docker compose run --service-ports --rm sandbox
+# (`--service-ports` is a no-op until you uncomment `ports:` below, but without
+# it `docker compose run` silently skips port publishing — so keep it in the
+# command you get used to typing.)
 #
 # Per-project state isolation:
 #   Compose auto-prefixes named volumes with the project name (defaults to the
@@ -20,7 +24,7 @@
 #
 # Upgrade the image:
 #   (in the claude_sandbox repo)  docker compose build
-#   (in this project)             docker compose run --rm sandbox
+#   (in this project)             docker compose run --service-ports --rm sandbox
 
 services:
   sandbox:
@@ -38,10 +42,9 @@ services:
     #   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     #   
     # Uncomment to expose dev-server ports to the host.
-    # IMPORTANT: `docker compose run` ignores `ports:` by default (to avoid
-    # collisions with an existing `up` instance). To actually publish them:
-    #   docker compose run --service-ports --rm sandbox
-    # or use `docker compose up` instead of `run`.
+    # IMPORTANT: these only take effect with `docker compose run` if you pass
+    # `--service-ports` (plain `run` ignores `ports:` to avoid colliding with
+    # an existing `up` instance). `docker compose up` honors them without flags.
     # ports:
     #   - "3000:3000"
     #   - "5173:5173"
