@@ -43,6 +43,21 @@ USER root
 # won't survive into the running container.
 RUN npm install -g @opengsd/gsd-core@latest
 
+# Playwright for automated testing/QA. Browsers go to an image-only path
+# (like /opt/gsd) instead of the default ~/.cache/ms-playwright — the home
+# cache isn't in the mounted volume, so browsers there would be lost on
+# every --rm and re-downloaded each run. ENV covers both the build-time
+# install below and runtime resolution. Global @playwright/test puts the
+# `playwright` CLI on PATH (same rationale as gsd-tools above); chromium
+# only, to keep the image size down. chown lets a project pin a different
+# Playwright version and `playwright install chromium` its matching
+# browser at runtime (ephemeral, but possible).
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+RUN npm install -g @playwright/test@latest && \
+    playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/* && \
+    chown -R sandbox:sandbox /opt/playwright
+
 # Lay down GSD content into an image-only path. The entrypoint symlinks
 # each gsd-* entry into ~/.claude/{skills,commands,...} at runtime, so
 # image rebuilds always deliver the latest GSD without the mounted volume

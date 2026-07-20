@@ -31,6 +31,10 @@ services:
     image: claude-sandbox:latest
     stdin_open: true
     tty: true
+    # Chromium (via the baked-in Playwright) can exhaust Docker's default
+    # 64 MB /dev/shm and crash mid-test; host IPC is Playwright's
+    # recommended fix.
+    ipc: host
     volumes:
       - ./:/home/sandbox/workspace
       - claude-home:/home/sandbox/.claude

@@ -132,6 +132,15 @@ docker run -it --rm \
   claude-sandbox
 ```
 
+## Playwright / browser testing
+
+The image ships Playwright with headless Chromium preinstalled (browsers live at `/opt/playwright` inside the image via `PLAYWRIGHT_BROWSERS_PATH`, so they survive `--rm` and upgrade with image rebuilds). The `playwright` CLI is on PATH globally.
+
+- **Headless only** — the container has no display server. Playwright defaults to headless, so tests and `playwright screenshot` just work; `--headed` and `codegen` won't.
+- **Version matching:** if your project installs `@playwright/test` locally (the usual setup), Playwright looks up a browser build matching *that* version. Keep the project's version in line with the image's (`playwright --version` inside the container), or run `npx playwright install chromium` in the container to fetch the matching build (lands in `/opt/playwright`, but is lost on `--rm` — prefer version matching).
+- **Only Chromium is baked in.** For Firefox/WebKit, add them to the `playwright install` line in the Dockerfile and rebuild.
+- The template sets `ipc: host` — Chromium can crash against Docker's default 64 MB `/dev/shm` without it.
+
 ## Notes
 
 - **File permissions:** the container runs as a non-root user. Default UID is 501 (macOS). On Linux, rebuild with `USER_UID=$(id -u) docker compose build`.
@@ -154,6 +163,7 @@ docker run -it --rm \
 | openssl    | TLS/crypto toolkit           |
 | postgresql-client | psql CLI              |
 | @opengsd/gsd-core | Spec-driven workflow for Claude Code |
+| Playwright | Browser automation & E2E testing (Chromium baked in, headless) |
 
 ## Documentation
 
