@@ -150,13 +150,14 @@ services:
 
 On Linux, mount the real socket path: `- ${SSH_AUTH_SOCK}:/ssh-agent`. Either way, load your key into the host agent first (`ssh-add`; on macOS `ssh-add --apple-load-keychain`) — an empty agent forwards successfully but authenticates nothing.
 
-**Custom agents (1Password, Secretive, etc.):** Docker Desktop forwards the *default* launchd agent, not the agent named by `IdentityAgent` in your `~/.ssh/config`, and macOS cannot bind-mount an arbitrary host socket into a container. Point the GUI session's `SSH_AUTH_SOCK` at your agent's socket and restart Docker Desktop:
+**Custom agents (1Password, Secretive, etc.):** Docker Desktop forwards whatever `SSH_AUTH_SOCK` its backend saw at launch — the *default* launchd agent, not the agent named by `IdentityAgent` in your `~/.ssh/config` — and macOS cannot bind-mount an arbitrary host socket into a container. `launchctl setenv` alone is not reliably picked up; what works is quitting Docker Desktop and relaunching it with the variable set in the launching environment:
 
 ```bash
-launchctl setenv SSH_AUTH_SOCK "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+osascript -e 'quit app "Docker Desktop"'
+SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" open -a "Docker Desktop"
 ```
 
-(Persist across reboots with a LaunchAgent plist. Side benefit: agents like 1Password prompt per signing request, so every container use of your key is visible and consented.)
+This does not survive a reboot (Docker Desktop auto-starts with the default environment) — persist it with a LaunchAgent plist that runs `launchctl setenv SSH_AUTH_SOCK ...` at login, before Docker Desktop starts. Side benefit of agents like 1Password: they prompt per signing request, so every container use of your key is visible and consented.
 
 **Fallback: read-only single-key mount.** If no agent is available, mount exactly one key, read-only:
 
