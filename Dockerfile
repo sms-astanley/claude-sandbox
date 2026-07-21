@@ -24,6 +24,18 @@ RUN curl -fsSL https://api.github.com/meta \
     | jq -r '.ssh_keys[] | "github.com \(.)"' > /etc/ssh/ssh_known_hosts \
     && grep -q ssh-ed25519 /etc/ssh/ssh_known_hosts
 
+# Install the GitHub CLI (`gh`) from its official apt repo. Debian's own
+# repos don't carry gh, and the repo needs a signing key + arch-pinned
+# source line. Keyring goes to /usr/share/keyrings (the vendor-recommended
+# path); own RUN block so the lists it fetches are cleaned in the same layer.
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y --no-install-recommends gh \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 

@@ -169,6 +169,19 @@ Understand the tradeoff: `:ro` prevents tampering but not reading — any proces
 
 For hosts other than GitHub, add their keys inside the container session (`ssh-keyscan gitlab.com >> ~/.ssh/known_hosts`) or extend `/etc/ssh/ssh_known_hosts` in the Dockerfile.
 
+## GitHub CLI (`gh`)
+
+The image includes the GitHub CLI, installed from GitHub's official apt repo. Like SSH, it ships with **no credential** — you supply one, and the choice carries the same security weight (autonomous agent, permissions skipped, arbitrary dependency code).
+
+Auth is **token-only, passed through the environment** — `gh` reads `GH_TOKEN` automatically:
+
+```yaml
+    environment:
+      GH_TOKEN: ${GH_TOKEN}
+```
+
+This is deliberate. Running `gh auth login` interactively would write a reusable OAuth credential to `gh`'s config dir; persisting that across `--rm` would mean pointing `GH_CONFIG_DIR` into the `claude-home` volume, leaving an exfiltratable secret on disk that any process in the container could read. An env-var token exists only while the container runs — the same reasoning that makes ssh-agent forwarding preferred over mounted key files. Prefer a short-lived, minimally-scoped token (a fine-grained PAT or `gh auth token` output).
+
 ## Playwright / browser testing
 
 The image ships Playwright with headless Chromium preinstalled (browsers live at `/opt/playwright` inside the image via `PLAYWRIGHT_BROWSERS_PATH`, so they survive `--rm` and upgrade with image rebuilds). The `playwright` CLI is on PATH globally.
@@ -195,6 +208,7 @@ The image ships Playwright with headless Chromium preinstalled (browsers live at
 | pip        | Python package installer     |
 | uv / uvx   | Fast Python package manager  |
 | git        | Version control              |
+| gh         | GitHub CLI (token-only auth via `GH_TOKEN`) |
 | build-essential | C/C++ compiler toolchain |
 | jq         | JSON processor               |
 | openssl    | TLS/crypto toolkit           |

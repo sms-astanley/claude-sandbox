@@ -59,10 +59,20 @@ services:
     # can read a mounted key file.
     #  - ~/.ssh/id_ed25519:/home/sandbox/.ssh/id_ed25519:ro
     #
+    # --- GitHub CLI (`gh`) auth ---
+    # Pass a token via the environment — `gh` reads GH_TOKEN automatically.
+    # This is deliberate: nothing but ~/.claude persists across --rm, and we
+    # keep it that way. A token in the env exists only while the container
+    # runs; persisting `gh auth login` credentials into the volume would leave
+    # a reusable secret on disk that any process in this (--dangerously-skip-
+    # permissions) container could read. Prefer a short-lived, minimally-scoped
+    # token. Uncomment the environment: block below and the GH_TOKEN line.
+    #
     # Uncomment to use an API key instead of /login:
     # environment:
     #   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-    #   
+    #   GH_TOKEN: ${GH_TOKEN}
+    #
     # Uncomment to expose dev-server ports to the host.
     # IMPORTANT: these only take effect with `docker compose run` if you pass
     # `--service-ports` (plain `run` ignores `ports:` to avoid colliding with
