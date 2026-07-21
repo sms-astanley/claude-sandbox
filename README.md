@@ -164,6 +164,7 @@ The image ships Playwright with headless Chromium preinstalled (browsers live at
 | postgresql-client | psql CLI              |
 | @opengsd/gsd-core | Spec-driven workflow for Claude Code |
 | Playwright | Browser automation & E2E testing (Chromium baked in, headless) |
+| pre-commit | Git hook framework (hook envs persist in the `claude-home` volume) |
 
 ## Documentation
 

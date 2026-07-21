@@ -67,6 +67,15 @@ USER sandbox
 RUN CLAUDE_CONFIG_DIR=/opt/gsd \
     gsd-core --claude --global
 
+# pre-commit for git hook management. Installed via uv tool → ~/.local/bin
+# (already on PATH). Hook environments default to ~/.cache/pre-commit,
+# which is outside the mounted volume and would be rebuilt on every --rm;
+# point PRE_COMMIT_HOME into the claude-home volume so they persist.
+# The dot-prefixed name keeps it out of Claude Code's way inside ~/.claude
+# (same pattern as .claude-json-persisted).
+ENV PRE_COMMIT_HOME=/home/sandbox/.claude/.pre-commit-cache
+RUN uv tool install pre-commit
+
 WORKDIR /home/sandbox/workspace
 
 COPY --chown=sandbox:sandbox entrypoint.sh /home/sandbox/entrypoint.sh
