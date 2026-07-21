@@ -40,7 +40,25 @@ services:
       - claude-home:/home/sandbox/.claude
     # To mount additional volumes like read-only data, append to the volumes list, e.g.:
     #  - ~/datasets:/home/sandbox/data:ro
-    #   
+    #
+    # --- Git over SSH ---
+    # PREFERRED: forward the host's ssh-agent — key material never enters the
+    # container; a compromised process could use the agent only while the
+    # container runs, but can never steal the key itself.
+    # Load your key into the host agent first (`ssh-add`, or on macOS
+    # `ssh-add --apple-load-keychain`). Then uncomment BOTH lines:
+    #   volumes entry (macOS/Docker Desktop magic path):
+    #  - /run/host-services/ssh-auth.sock:/ssh-agent
+    #   (Linux: use `- ${SSH_AUTH_SOCK}:/ssh-agent` instead)
+    #   environment entry (merge into the environment: block below):
+    #   SSH_AUTH_SOCK: /ssh-agent
+    #
+    # FALLBACK (no agent available): mount ONE dedicated key read-only.
+    # Never mount all of ~/.ssh, and prefer a key with narrow access (e.g. a
+    # per-repo deploy key) over your main identity — anything in the container
+    # can read a mounted key file.
+    #  - ~/.ssh/id_ed25519:/home/sandbox/.ssh/id_ed25519:ro
+    #
     # Uncomment to use an API key instead of /login:
     # environment:
     #   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}

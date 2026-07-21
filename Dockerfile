@@ -11,9 +11,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     jq \
     openssl \
+    openssh-client \
     postgresql-client \
     psmisc \
     && rm -rf /var/lib/apt/lists/*
+
+# Pin GitHub's SSH host keys system-wide. Fetched from the TLS-authenticated
+# meta API (stronger than ssh-keyscan's trust-on-first-use), baked at build
+# time because nothing outside ~/.claude persists across --rm — without this,
+# every fresh container would prompt (or blindly accept) GitHub's host key.
+RUN curl -fsSL https://api.github.com/meta \
+    | jq -r '.ssh_keys[] | "github.com \(.)"' > /etc/ssh/ssh_known_hosts \
+    && grep -q ssh-ed25519 /etc/ssh/ssh_known_hosts
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
@@ -24,6 +33,13 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # Create a non-root user matching the host UID (default 501 for macOS)
 ARG USER_UID=501
 RUN useradd -m -s /bin/bash -u ${USER_UID} sandbox
+# Docker Desktop's forwarded ssh-agent socket (/run/host-services/
+# ssh-auth.sock) arrives as root:root mode 660. Group-root membership is
+# the minimal grant that lets the non-root user reach it — on
+# bookworm-slim nothing of consequence is group-root writable, and the
+# alternative (root entrypoint wrapper that chowns then drops privileges)
+# puts an actual root process in every container start.
+RUN usermod -aG root sandbox
 USER sandbox
 
 # Install Claude Code via the native installer (the supported install

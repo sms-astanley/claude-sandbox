@@ -132,6 +132,42 @@ docker run -it --rm \
   claude-sandbox
 ```
 
+## Git over SSH
+
+The image includes the OpenSSH client with GitHub's host keys pre-pinned (fetched from GitHub's TLS-authenticated meta API at build time), so no host-key prompt appears on first clone. What it deliberately does **not** include is any credential — you choose how to provide one, and the choice has real security weight because this sandbox runs an autonomous agent with permissions skipped plus whatever your project's dependencies execute.
+
+**Preferred: ssh-agent forwarding.** Mount the host agent's socket instead of key files. The container can request signatures while it runs, but the private key never enters the container and cannot be stolen for later use. This is also the only option for hardware-backed keys (Secure Enclave, YubiKey).
+
+```yaml
+# docker-compose.yml (macOS / Docker Desktop)
+services:
+  sandbox:
+    volumes:
+      - /run/host-services/ssh-auth.sock:/ssh-agent   # magic Docker Desktop path
+    environment:
+      SSH_AUTH_SOCK: /ssh-agent
+```
+
+On Linux, mount the real socket path: `- ${SSH_AUTH_SOCK}:/ssh-agent`. Either way, load your key into the host agent first (`ssh-add`; on macOS `ssh-add --apple-load-keychain`) — an empty agent forwards successfully but authenticates nothing.
+
+**Custom agents (1Password, Secretive, etc.):** Docker Desktop forwards the *default* launchd agent, not the agent named by `IdentityAgent` in your `~/.ssh/config`, and macOS cannot bind-mount an arbitrary host socket into a container. Point the GUI session's `SSH_AUTH_SOCK` at your agent's socket and restart Docker Desktop:
+
+```bash
+launchctl setenv SSH_AUTH_SOCK "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+```
+
+(Persist across reboots with a LaunchAgent plist. Side benefit: agents like 1Password prompt per signing request, so every container use of your key is visible and consented.)
+
+**Fallback: read-only single-key mount.** If no agent is available, mount exactly one key, read-only:
+
+```yaml
+      - ~/.ssh/id_ed25519:/home/sandbox/.ssh/id_ed25519:ro
+```
+
+Understand the tradeoff: `:ro` prevents tampering but not reading — any process in the container can copy the key. Mitigate by using a dedicated low-privilege key (e.g. a per-repo deploy key) rather than your main identity, and never mount the whole `~/.ssh` directory (it exposes every identity plus your SSH config). On Linux, the key file's owner must match the container UID (`USER_UID` build arg) for OpenSSH's permission checks to pass.
+
+For hosts other than GitHub, add their keys inside the container session (`ssh-keyscan gitlab.com >> ~/.ssh/known_hosts`) or extend `/etc/ssh/ssh_known_hosts` in the Dockerfile.
+
 ## Playwright / browser testing
 
 The image ships Playwright with headless Chromium preinstalled (browsers live at `/opt/playwright` inside the image via `PLAYWRIGHT_BROWSERS_PATH`, so they survive `--rm` and upgrade with image rebuilds). The `playwright` CLI is on PATH globally.
