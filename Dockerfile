@@ -39,8 +39,12 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm. Only `corepack enable` runs as root — it writes shims to a
+# global bin dir. The actual download (`corepack prepare`) has to run as
+# `sandbox` further down, because corepack caches the resolved pnpm tarball
+# under $HOME/.cache/node/corepack; doing it here would fill root's cache and
+# leave the sandbox user re-downloading pnpm on every container start.
+RUN corepack enable
 
 # Create a non-root user matching the host UID (default 501 for macOS)
 ARG USER_UID=501
@@ -64,6 +68,11 @@ USER sandbox
 # copy as a leftover "npm-global" install via the multi-install warning.)
 ENV PATH="/home/sandbox/.local/bin:${PATH}"
 RUN curl -fsSL https://claude.ai/install.sh | bash
+
+# Warm the corepack cache as the user that will actually run pnpm (see the
+# `corepack enable` note above). $HOME/.cache is image-only — the mount covers
+# only ~/.claude — so this survives --rm without touching the volume.
+RUN corepack prepare pnpm@latest --activate
 
 USER root
 # Install GSD globally so `gsd-tools` is on PATH (GSD agents/hooks invoke

@@ -26,11 +26,17 @@ for dir in skills commands agents hooks; do
     done
 done
 
-# GSD ships a get-shit-done/ helper tree at the root of CLAUDE_CONFIG_DIR.
-# Symlink it wholesale — GSD-owned, never user-modified.
-if [ -d "$GSD_ROOT/get-shit-done" ]; then
-    ln -sfn "$GSD_ROOT/get-shit-done" "$CLAUDE_DIR/get-shit-done"
-fi
+# GSD ships a helper tree at the root of CLAUDE_CONFIG_DIR — `gsd-core/` as of
+# GSD 1.8.0, `get-shit-done/` before that. Symlink whichever exists wholesale
+# (GSD-owned, never user-modified) and drop the other name if a previous image's
+# symlink is still sitting in the mounted volume, dangling.
+for tree in gsd-core get-shit-done; do
+    if [ -d "$GSD_ROOT/$tree" ]; then
+        ln -sfn "$GSD_ROOT/$tree" "$CLAUDE_DIR/$tree"
+    elif [ -L "$CLAUDE_DIR/$tree" ]; then
+        rm -f "$CLAUDE_DIR/$tree"
+    fi
+done
 
 # Symlink GSD-namespaced metadata files at the root of CLAUDE_CONFIG_DIR
 # (manifest, install-state, package.json read by /gsd-help, etc.).
