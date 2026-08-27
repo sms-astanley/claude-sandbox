@@ -14,11 +14,18 @@ mkdir -p "$CLAUDE_DIR"
 for dir in skills commands agents hooks; do
     src_dir="$GSD_ROOT/$dir"
     dst_dir="$CLAUDE_DIR/$dir"
-    [ -d "$src_dir" ] || continue
-    mkdir -p "$dst_dir"
 
     # Drop stale gsd-* symlinks first so renamed/removed entries don't linger.
-    find "$dst_dir" -maxdepth 1 -name 'gsd-*' -type l -delete 2>/dev/null || true
+    # This runs BEFORE the source-dir check on purpose: GSD dropped commands/
+    # outright in 1.8.0, and a sweep gated behind `[ -d $src_dir ]` would skip
+    # the very directory whose links went stale, leaving them dangling forever
+    # (GSD's own migrations only see its install dir, never ~/.claude).
+    if [ -d "$dst_dir" ]; then
+        find "$dst_dir" -maxdepth 1 -name 'gsd-*' -type l -delete 2>/dev/null || true
+    fi
+
+    [ -d "$src_dir" ] || continue
+    mkdir -p "$dst_dir"
 
     for src in "$src_dir"/gsd-*; do
         [ -e "$src" ] || continue

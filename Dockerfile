@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:24-trixie-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -51,10 +51,11 @@ ARG USER_UID=501
 RUN useradd -m -s /bin/bash -u ${USER_UID} sandbox
 # Docker Desktop's forwarded ssh-agent socket (/run/host-services/
 # ssh-auth.sock) arrives as root:root mode 660. Group-root membership is
-# the minimal grant that lets the non-root user reach it — on
-# bookworm-slim nothing of consequence is group-root writable, and the
-# alternative (root entrypoint wrapper that chowns then drops privileges)
-# puts an actual root process in every container start.
+# the minimal grant that lets the non-root user reach it — on the slim
+# base nothing of consequence is group-root writable (re-verified on
+# trixie: only /run/lock and man dirs), and the alternative (root
+# entrypoint wrapper that chowns then drops privileges) puts an actual
+# root process in every container start.
 RUN usermod -aG root sandbox
 USER sandbox
 
